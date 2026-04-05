@@ -3,56 +3,60 @@
 <head>
   <meta charset="utf-8">
   <title>Snake — ClawShahBot Demo</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <style>
     html,body{height:100%;margin:0}
     body { display:flex; align-items:center; justify-content:center; height:100vh; margin:0; background:#0b2240; color:#fff; font-family:Arial, sans-serif }
-    #wrap{position:relative}
-    #game { background:#070b10; display:block; box-shadow:0 8px 30px rgba(0,0,0,0.6); touch-action:none }
-    .ui { position: absolute; top:12px; left:12px; font-size:16px }
-    .controls { position:absolute; right:8px; bottom:8px; display:flex; gap:8px }
-    .dpad { position:absolute; left:8px; bottom:8px; width:160px; height:160px; display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); gap:6px }
-    .dpad button{background:rgba(255,255,255,0.08); border:none; color:#fff; font-size:18px; border-radius:8px}
+    #wrap{position:relative;width:100%;max-width:520px}
+    #game{background:#070b10;display:block;width:100%;height:auto;box-shadow:0 8px 30px rgba(0,0,0,0.6);touch-action:none}
+    #hud{position:absolute;top:8px;right:12px;color:#fff;font-weight:600}
+    .dpad{position:absolute;left:12px;bottom:12px;width:36%;max-width:220px;aspect-ratio:1/1;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:8px}
+    .dpad button{background:rgba(255,255,255,0.06);border:none;color:#fff;font-size:18px;border-radius:8px}
     .center{background:transparent}
-    #hud{position:absolute; top:12px; right:12px; text-align:right}
-    .large{font-size:20px;font-weight:700}
-    .overlay{position:absolute;left:0;top:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+    .overlay{position:absolute;left:0;top:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center}
     .panel{background:rgba(10,10,10,0.9);padding:18px;border-radius:10px;text-align:center}
     .btn{background:#0a84ff;color:#fff;border:none;padding:8px 12px;border-radius:6px;margin-top:8px}
   </style>
 </head>
 <body>
 <div id="wrap">
-  <div id="hud"><div>Score: <span id="score">0</span> | Best: <span id="best">0</span></div></div>
-  <canvas id="game" width="420" height="420" aria-label="Snake game"></canvas>
+  <div id="hud">Score: <span id="score">0</span> | Best: <span id="best">0</span></div>
+  <canvas id="game"></canvas>
+  <div id="overlay" class="overlay"><div class="panel"><h2 id="ovTitle">ClawShahBot Snake</h2><p id="ovText">Tap Start to play</p><button id="startBtn" class="btn">Start</button></div></div>
   <div class="dpad" id="dpad" aria-hidden="true">
     <div></div><button id="up">▲</button><div></div>
     <button id="left">◀</button><div class="center"></div><button id="right">▶</button>
     <div></div><button id="down">▼</button><div></div>
   </div>
-  <div id="overlay" class="overlay" style="display:none"><div class="panel"><h2 id="ovTitle">ClawShahBot Snake</h2><p id="ovText">Tap Start to play</p><button id="startBtn" class="btn">Start</button><div style="margin-top:8px"><button id="resumeBtn" class="btn" style="display:none">Resume</button></div></div></div>
 </div>
 <script>
 const canvas=document.getElementById('game');const ctx=canvas.getContext('2d');
-const scale=20;const rows=canvas.height/scale, cols=canvas.width/scale;
-let snake=[{x:10,y:10}];let dir={x:1,y:0};let food={};let score=0;let speed=120;let running=false;let tick=null;let best = localStorage.getItem('snake_best')||0;document.getElementById('best').innerText=best;
+function fitCanvas(){ const wrap=document.getElementById('wrap'); const w=Math.min(window.innerWidth-24,520); const size=w; const dpr=window.devicePixelRatio||1; canvas.style.width=size+'px'; canvas.style.height=size+'px'; canvas.width=Math.floor(size*dpr); canvas.height=Math.floor(size*dpr); ctx.setTransform(dpr,0,0,dpr,0,0); }
+fitCanvas(); window.addEventListener('resize',()=>{fitCanvas(); resetGrid(); draw();});
+let scale=20; let rows, cols; function resetGrid(){ rows=Math.floor(canvas.height/(scale*(window.devicePixelRatio||1))); cols=Math.floor(canvas.width/(scale*(window.devicePixelRatio||1))); }
+resetGrid();
+let snake=[{x:Math.floor(cols/2),y:Math.floor(rows/2)}];let dir={x:1,y:0};let food={};let score=0;let speed=120;let running=false;let tick=null;let best=localStorage.getItem('snake_best')||0;document.getElementById('best').innerText=best;
 function rand(){return Math.floor(Math.random()*cols)}
 function placeFood(){food.x=rand();food.y=rand();for(let s of snake) if(s.x==food.x&&s.y==food.y) placeFood();}
-function draw(){ctx.fillStyle='#070b10';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#ff3b30';ctx.fillRect(food.x*scale,food.y*scale,scale,scale);ctx.fillStyle='#34c759';for(let s of snake)ctx.fillRect(s.x*scale+1,s.y*scale+1,scale-2,scale-2)}
-function update(){const head={x:snake[0].x+dir.x,y:snake[0].y+dir.y};if(head.x<0||head.x>=cols||head.y<0||head.y>=rows||snake.some(s=>s.x==head.x&&s.y==head.y)){gameOver();return;}snake.unshift(head);if(head.x==food.x&&head.y==food.y){score++;document.getElementById('score').innerText=score;placeFood()}else snake.pop()}
-function loop(){update();draw()}
-function startGame(){if(running) return;running=true;document.getElementById('overlay').style.display='none';tick=setInterval(loop,speed)}
-function pauseGame(){if(!running) return;clearInterval(tick);running=false}
-function gameOver(){pauseGame();document.getElementById('ovTitle').innerText='Game Over';document.getElementById('ovText').innerText='Score: '+score;document.getElementById('overlay').style.display='flex';if(score>best){best=score;localStorage.setItem('snake_best',best);document.getElementById('best').innerText=best}score=0;document.getElementById('score').innerText=0;snake=[{x:10,y:10}];dir={x:1,y:0};placeFood()}
-window.addEventListener('keydown',e=>{const k=e.key;if(k=='ArrowUp'&&dir.y==0)dir={x:0,y:-1};if(k=='ArrowDown'&&dir.y==0)dir={x:0,y:1};if(k=='ArrowLeft'&&dir.x==0)dir={x:-1,y:0};if(k=='ArrowRight'&&dir.x==0)dir={x:1,y:0}})
-// touch buttons
+function draw(){ const dpr=window.devicePixelRatio||1; ctx.fillStyle='#070b10'; ctx.fillRect(0,0,canvas.width/dpr,canvas.height/dpr); ctx.fillStyle='#ff3b30'; ctx.fillRect(food.x*scale,food.y*scale,scale,scale); ctx.fillStyle='#34c759'; for(let s of snake) ctx.fillRect(s.x*scale+1,s.y*scale+1,scale-2,scale-2); }
+function update(){ const head={x:snake[0].x+dir.x,y:snake[0].y+dir.y}; if(head.x<0||head.x>=cols||head.y<0||head.y>=rows||snake.some(s=>s.x==head.x&&s.y==head.y)){ gameOver(); return; } snake.unshift(head); if(head.x==food.x&&head.y==food.y){score++;document.getElementById('score').innerText=score;placeFood()} else snake.pop(); }
+function loop(){ update(); draw(); }
+function startGame(){ if(running) return; running=true; document.getElementById('overlay').style.display='none'; tick=setInterval(loop,speed) }
+function pauseGame(){ if(!running) return; clearInterval(tick); running=false }
+function gameOver(){ pauseGame(); document.getElementById('ovTitle').innerText='Game Over'; document.getElementById('ovText').innerText='Score: '+score; document.getElementById('overlay').style.display='flex'; if(score>best){best=score; localStorage.setItem('snake_best',best); document.getElementById('best').innerText=best } score=0; document.getElementById('score').innerText=0; snake=[{x:Math.floor(cols/2),y:Math.floor(rows/2)}]; dir={x:1,y:0}; placeFood() }
+window.addEventListener('keydown',e=>{ const k=e.key; if(k=='ArrowUp'&&dir.y==0)dir={x:0,y:-1}; if(k=='ArrowDown'&&dir.y==0)dir={x:0,y:1}; if(k=='ArrowLeft'&&dir.x==0)dir={x:-1,y:0}; if(k=='ArrowRight'&&dir.x==0)dir={x:1,y:0} });
+// dpad buttons
 ['up','down','left','right'].forEach(id=>{document.getElementById(id).addEventListener('touchstart',e=>{e.preventDefault(); if(id=='up'&&dir.y==0)dir={x:0,y:-1}; if(id=='down'&&dir.y==0)dir={x:0,y:1}; if(id=='left'&&dir.x==0)dir={x:-1,y:0}; if(id=='right'&&dir.x==0)dir={x:1,y:0}})})
-// swipe support
-let touchStart=null;canvas.addEventListener('touchstart',e=>{touchStart=e.touches[0]});canvas.addEventListener('touchend',e=>{if(!touchStart) return;let t=e.changedTouches[0];let dx=t.clientX-touchStart.clientX,dy=t.clientY-touchStart.clientY; if(Math.abs(dx)>Math.abs(dy)){ if(dx>0&&dir.x==0)dir={x:1,y:0}; else if(dx<0&&dir.x==0)dir={x:-1,y:0}; } else { if(dy>0&&dir.y==0)dir={x:0,y:1}; else if(dy<0&&dir.y==0)dir={x:0,y:-1}; } touchStart=null; });
-// UI
-document.getElementById('startBtn').addEventListener('click',()=>{startGame();});document.getElementById('resumeBtn').addEventListener('click',()=>{startGame();});
-// init
-placeFood();draw();
+// swipe
+let touchStart=null;canvas.addEventListener('touchstart',e=>{touchStart=e.touches[0]});canvas.addEventListener('touchend',e=>{if(!touchStart) return;let t=e.changedTouches[0];let dx=t.clientX-touchStart.clientX,dy=t.clientY-touchStart.clientY;if(Math.abs(dx)>Math.abs(dy)){ if(dx>0&&dir.x==0)dir={x:1,y:0}; else if(dx<0&&dir.x==0)dir={x:-1,y:0}; } else { if(dy>0&&dir.y==0)dir={x:0,y:1}; else if(dy<0&&dir.y==0)dir={x:0,y:-1}; } touchStart=null; });
+// overlay controls
+document.getElementById('startBtn').addEventListener('click',()=>{startGame();});
+// initialize
+function init(){ // recompute grid based on size
+ const dpr=window.devicePixelRatio||1; const cw=canvas.clientWidth*cwScale(); canvas.width=Math.floor(canvas.clientWidth*(dpr)); canvas.height=Math.floor(canvas.clientWidth*(dpr)); resetGrid(); snake=[{x:Math.floor(cols/2),y:Math.floor(rows/2)}]; placeFood(); draw(); }
+function cwScale(){return 1}
+function resetGrid(){ cols=Math.floor((canvas.clientWidth)/scale); rows=Math.floor((canvas.clientWidth)/scale); if(cols<10) cols=10; if(rows<10) rows=10 }
+resetGrid(); placeFood(); draw();
 </script>
 </body>
 </html>
