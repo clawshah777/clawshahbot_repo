@@ -1,0 +1,31 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+      - name: Copy files to VPS
+        run: |
+          rsync -avz -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" ./site/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/var/www/clawshahbot/
+
+      - name: Remote restart (optional)
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'sudo systemctl restart nginx || true'
+
+# Required repo secrets:
+# DEPLOY_PRIVATE_KEY (private key content)
+# VPS_USER (username on VPS)
+# VPS_HOST (host/ip of VPS)
