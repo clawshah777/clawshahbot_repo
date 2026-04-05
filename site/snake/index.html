@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Snake — ClawShahBot Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { display:flex; align-items:center; justify-content:center; height:100vh; margin:0; background:#0b2240; color:#fff; font-family:Arial, sans-serif }
+    #game { background:#070b10; display:block; box-shadow:0 8px 30px rgba(0,0,0,0.6); }
+    .ui { position: absolute; top:16px; left:16px; font-size:16px }
+    .controls { position: absolute; bottom:20px; display:flex; gap:8px }
+    .btn { background:#0a84ff; color:#fff; border:none; padding:8px 12px; border-radius:6px }
+  </style>
+</head>
+<body>
+<div class="ui">Score: <span id="score">0</span></div>
+<canvas id="game" width="400" height="400"></canvas>
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const scale = 20;
+const rows = canvas.height/scale;
+const cols = canvas.width/scale;
+let snake = [{x:10,y:10}];
+let dir = {x:1,y:0};
+let food = {};
+let score = 0;
+let speed = 120;
+function rand(){ return Math.floor(Math.random()*cols); }
+function placeFood(){ food.x = rand(); food.y = rand(); for (let s of snake) if(s.x==food.x && s.y==food.y) placeFood(); }
+function draw(){ ctx.fillStyle='#070b10'; ctx.fillRect(0,0,canvas.width,canvas.height);
+ // draw food
+ ctx.fillStyle='#ff3b30'; ctx.fillRect(food.x*scale,food.y*scale,scale,scale);
+ // draw snake
+ ctx.fillStyle='#34c759'; for(let s of snake) ctx.fillRect(s.x*scale,s.y*scale,scale,scale);
+}
+function update(){
+  const head = {x:snake[0].x+dir.x, y:snake[0].y+dir.y};
+  if(head.x<0||head.x>=cols||head.y<0||head.y>=rows || snake.some(s=>s.x==head.x&&s.y==head.y)){ reset(); return; }
+  snake.unshift(head);
+  if(head.x==food.x && head.y==food.y){ score++; document.getElementById('score').innerText = score; placeFood(); } else snake.pop();
+}
+function loop(){ update(); draw(); }
+function reset(){ snake=[{x:10,y:10}]; dir={x:1,y:0}; score=0; document.getElementById('score').innerText=0; placeFood(); }
+window.addEventListener('keydown',(e)=>{
+ const k=e.key; if(k=='ArrowUp' && dir.y==0){dir={x:0,y:-1}} if(k=='ArrowDown' && dir.y==0){dir={x:0,y:1}} if(k=='ArrowLeft'&&dir.x==0){dir={x:-1,y:0}} if(k=='ArrowRight'&&dir.x==0){dir={x:1,y:0}}
+});
+// touch controls
+let touchStart=null; canvas.addEventListener('touchstart',e=>{ touchStart=e.touches[0]; });
+canvas.addEventListener('touchend',e=>{ if(!touchStart) return; let t=e.changedTouches[0]; let dx=t.clientX-touchStart.clientX, dy=t.clientY-touchStart.clientY; if(Math.abs(dx)>Math.abs(dy)){ if(dx>0 && dir.x==0) dir={x:1,y:0}; else if(dx<0 && dir.x==0) dir={x:-1,y:0}; } else { if(dy>0 && dir.y==0) dir={x:0,y:1}; else if(dy<0 && dir.y==0) dir={x:0,y:-1}; } touchStart=null; });
+placeFood(); draw(); setInterval(loop, speed);
+</script>
+</body>
+</html>
