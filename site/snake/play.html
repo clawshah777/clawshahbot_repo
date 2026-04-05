@@ -1,0 +1,18 @@
+<!doctype html>
+<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Play — Snake</title>
+<style>html,body{height:100%;margin:0;background:#041022;display:flex;align-items:center;justify-content:center;color:#fff;font-family:Arial}canvas{background:#071019;border-radius:12px}</style>
+</head><body>
+<canvas id="c"></canvas>
+<script>
+const canvas=document.getElementById('c');const ctx=canvas.getContext('2d');function fit(){const s=Math.min(window.innerWidth-20,window.innerHeight-120);canvas.width=s;canvas.height=s;}
+fit();window.addEventListener('resize',fit);
+const scale=20;let cols=Math.floor(canvas.width/scale),rows=cols;let snake=[{x:Math.floor(cols/2),y:Math.floor(rows/2)}],dir={x:1,y:0},food={x:5,y:5},score=0;function rand(){return Math.floor(Math.random()*cols)}
+function placeFood(){food.x=rand();food.y=rand();for(let s of snake) if(s.x==food.x&&s.y==food.y) placeFood()}placeFood();
+function draw(){ctx.fillStyle='#071019';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#ff3b30';ctx.fillRect(food.x*scale,food.y*scale,scale,scale);ctx.fillStyle='#34c759';for(let s of snake)ctx.fillRect(s.x*scale+1,s.y*scale+1,scale-2,scale-2)}
+function step(){const head={x:snake[0].x+dir.x,y:snake[0].y+dir.y}; if(head.x<0||head.x>=cols||head.y<0||head.y>=rows||snake.some(s=>s.x==head.x&&s.y==head.y)){reset();return;} snake.unshift(head); if(head.x==food.x&&head.y==food.y){score++;placeFood();} else snake.pop();}
+function reset(){snake=[{x:Math.floor(cols/2),y:Math.floor(rows/2)}];dir={x:1,y:0};score=0}
+let interval=140;setInterval(()=>{step();draw()},interval);
+window.addEventListener('keydown',e=>{const k=e.key;if(k=='ArrowUp'&&dir.y==0)dir={x:0,y:-1};if(k=='ArrowDown'&&dir.y==0)dir={x:0,y:1};if(k=='ArrowLeft'&&dir.x==0)dir={x:-1,y:0};if(k=='ArrowRight'&&dir.x==0)dir={x:1,y:0}});
+let ts=null;canvas.addEventListener('touchstart',e=>{ts=e.touches[0]});canvas.addEventListener('touchend',e=>{if(!ts)return;let t=e.changedTouches[0];let dx=t.clientX-ts.clientX,dy=t.clientY-ts.clientY;if(Math.abs(dx)>Math.abs(dy)){ if(dx>20&&dir.x==0)dir={x:1,y:0}; else if(dx<-20&&dir.x==0)dir={x:-1,y:0}; } else { if(dy>20&&dir.y==0)dir={x:0,y:1}; else if(dy<-20&&dir.y==0)dir={x:0,y:-1}; } ts=null; });
+</script>
+</body></html>
