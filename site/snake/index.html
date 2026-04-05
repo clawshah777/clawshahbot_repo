@@ -81,33 +81,69 @@ let snake=[],dir={x:1,y:0},food={x:0,y:0},score=0,best=localStorage.getItem('sna
 function resetState(){score=0;document.getElementById('score').innerText=0;snake=[{x:Math.floor(cols/2),y:Math.floor(rows/2)}];dir={x:1,y:0};placeFood();}
 function rand(){return Math.floor(Math.random()*cols)}
 function placeFood(){food.x=rand();food.y=rand();for(let s of snake) if(s.x==food.x&&s.y==food.y) placeFood();}
-function clear(){ctx.fillStyle='#071019';ctx.fillRect(0,0,canvas.clientWidth,canvas.clientHeight)}
-function drawGrid(){const px=scale;ctx.strokeStyle='rgba(255,255,255,0.02)';ctx.lineWidth=1;for(let x=0;x<=cols;x++){ctx.beginPath();ctx.moveTo(x*px,0);ctx.lineTo(x*px,rows*px);ctx.stroke()}for(let y=0;y<=rows;y++){ctx.beginPath();ctx.moveTo(0,y*px);ctx.lineTo(cols*px,y*px);ctx.stroke()}}
-function draw(){clear();drawGrid(); // food
- ctx.fillStyle='#ff4757'; roundRect(ctx,food.x*scale+2,food.y*scale+2,scale-4,scale-4,6); ctx.fill(); // snake
- for(let i=snake.length-1;i>=0;i--){const s=snake[i]; ctx.fillStyle=(i==0?'#b7ffd7':'#34c759'); roundRect(ctx,s.x*scale+1,s.y*scale+1,scale-2,scale-2,6); }
- // particles
+function clear(){
+  const bg=ctx.createLinearGradient(0,0,0,canvas.clientHeight);
+  bg.addColorStop(0,'#0a1830');
+  bg.addColorStop(1,'#0d2038');
+  ctx.fillStyle=bg;
+  ctx.fillRect(0,0,canvas.clientWidth,canvas.clientHeight);
+}
+function drawGrid(){const px=scale;ctx.strokeStyle='rgba(255,255,255,0.035)';ctx.lineWidth=1;for(let x=0;x<=cols;x++){ctx.beginPath();ctx.moveTo(x*px,0);ctx.lineTo(x*px,rows*px);ctx.stroke()}for(let y=0;y<=rows;y++){ctx.beginPath();ctx.moveTo(0,y*px);ctx.lineTo(cols*px,y*px);ctx.stroke()}}
+function draw(){
+ clear();
+ drawGrid();
+ ctx.fillStyle='#ff6b6b';
+ roundRect(ctx,food.x*scale+3,food.y*scale+3,scale-6,scale-6,6);
+ ctx.fill();
+ for(let i=snake.length-1;i>=0;i--){
+   const s=snake[i];
+   const fill=i===0?'#d9ffe8':'#41d975';
+   ctx.fillStyle=fill;
+   roundRect(ctx,s.x*scale+1,s.y*scale+1,scale-2,scale-2,6);
+   ctx.fill();
+   if(i!==0){
+     ctx.fillStyle='rgba(255,255,255,0.08)';
+     roundRect(ctx,s.x*scale+4,s.y*scale+4,scale-10,scale-10,4);
+     ctx.fill();
+   }
+ }
+ if(snake.length){
+   const h=snake[0];
+   const hx=h.x*scale+scale/2;
+   const hy=h.y*scale+scale/2;
+   const ox=dir.x*(scale*0.16);
+   const oy=dir.y*(scale*0.16);
+   ctx.fillStyle='#0a2230';
+   ctx.beginPath();ctx.arc(hx-scale*0.14+ox,hy-scale*0.16+oy,Math.max(2,scale*0.06),0,Math.PI*2);ctx.fill();
+   ctx.beginPath();ctx.arc(hx+scale*0.14+ox,hy-scale*0.16+oy,Math.max(2,scale*0.06),0,Math.PI*2);ctx.fill();
+ }
  particles=particles.filter(p=>p.life>0);
  for(let p of particles){ctx.globalAlpha=p.life/p.max; ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill(); p.life-=1}
- ctx.globalAlpha=1 }
+ ctx.globalAlpha=1;
+}
 function roundRect(ctx,x,y,w,h,r){if(w<2*r) r=w/2; if(h<2*r) r=h/2; ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
-function step(){const head={x:snake[0].x+dir.x,y:snake[0].y+dir.y}; if(head.x<0||head.x>=cols||head.y<0||head.y>=rows||snake.some(s=>s.x==head.x&&s.y==head.y)){ gameOver(); return; } snake.unshift(head); if(head.x==food.x&&head.y==food.y){score++;document.getElementById('score').innerText=score; spawnParticles(head.x*scale+scale/2,head.y*scale+scale/2); placeFood(); if(score%4==0) interval=Math.max(60,interval-6);} else snake.pop(); }
+function step(){
+ const head={x:snake[0].x+dir.x,y:snake[0].y+dir.y};
+ if(head.x<0) head.x=cols-1;
+ else if(head.x>=cols) head.x=0;
+ if(head.y<0) head.y=rows-1;
+ else if(head.y>=rows) head.y=0;
+ if(snake.some(s=>s.x==head.x&&s.y==head.y)){ gameOver(); return; }
+ snake.unshift(head);
+ if(head.x==food.x&&head.y==food.y){score++;document.getElementById('score').innerText=score; spawnParticles(head.x*scale+scale/2,head.y*scale+scale/2); placeFood(); if(score%4==0) interval=Math.max(60,interval-6);} else snake.pop();
+}
 function loop(ts){ if(!lastTime) lastTime=ts; if(ts-lastTime>interval){ step(); draw(); lastTime=ts } rafId=requestAnimationFrame(loop); }
 function start(){ if(running) return; running=true; document.getElementById('startOverlay')?.remove(); resetState(); interval=parseInt(document.getElementById('difficulty').value); lastTime=0; rafId=requestAnimationFrame(loop); }
 function pause(){ if(!running) return; running=false; if(rafId) cancelAnimationFrame(rafId); document.getElementById('startOverlay')?.remove();}
-function gameOver(){ pause(); // show overlay message
- const overlay=document.createElement('div'); overlay.style.position='absolute'; overlay.style.inset='0'; overlay.style.display='flex'; overlay.style.alignItems='center'; overlay.style.justifyContent='center'; overlay.style.backdropFilter='blur(6px)'; const card=document.createElement('div'); card.className='card'; card.style.padding='18px'; card.innerHTML=`<h2>Game Over</h2><p class='small'>Score: ${score}</p><button id='retry' class='btn'>Play Again</button>`; overlay.appendChild(card); document.querySelector('.wrapper').appendChild(overlay); document.getElementById('retry').addEventListener('click',()=>{ overlay.remove(); start(); }); if(score>best){best=score;localStorage.setItem('snake_best',best);document.getElementById('best').innerText=best;} score=0;document.getElementById('score').innerText=0;}
-// input handlers
+function gameOver(){ pause();
+ const overlay=document.createElement('div'); overlay.id='startOverlay'; overlay.style.position='absolute'; overlay.style.inset='0'; overlay.style.display='flex'; overlay.style.alignItems='center'; overlay.style.justifyContent='center'; overlay.style.backdropFilter='blur(6px)'; const card=document.createElement('div'); card.className='card'; card.style.padding='18px'; card.innerHTML=`<h2>Game Over</h2><p class='small'>Score: ${score}</p><button id='retry' class='btn'>Play Again</button>`; overlay.appendChild(card); document.querySelector('.canvas-box').appendChild(overlay); document.getElementById('retry').addEventListener('click',()=>{ overlay.remove(); start(); }); if(score>best){best=score;localStorage.setItem('snake_best',best);document.getElementById('best').innerText=best;} score=0;document.getElementById('score').innerText=0;}
 window.addEventListener('keydown',e=>{const k=e.key;if(k=='ArrowUp'&&dir.y==0)dir={x:0,y:-1};if(k=='ArrowDown'&&dir.y==0)dir={x:0,y:1};if(k=='ArrowLeft'&&dir.x==0)dir={x:-1,y:0};if(k=='ArrowRight'&&dir.x==0)dir={x:1,y:0};if(k==' '){ if(running) pause(); else start(); }});
-['up','down','left','right'].forEach(id=>{const el=document.getElementById(id); if(el) el.addEventListener('touchstart',e=>{e.preventDefault(); if(id=='up'&&dir.y==0)dir={x:0,y:-1}; if(id=='down'&&dir.y==0)dir={x:0,y:1}; if(id=='left'&&dir.x==0)dir={x:-1,y:0}; if(id=='right'&&dir.x==0)dir={x:1,y:0}; });});
-// swipe
-let startTouch=null;canvas.addEventListener('touchstart',e=>{startTouch=e.touches[0];});canvas.addEventListener('touchend',e=>{if(!startTouch) return;const t=e.changedTouches[0];const dx=t.clientX-startTouch.clientX;const dy=t.clientY-startTouch.clientY; if(Math.abs(dx)>Math.abs(dy)){ if(dx>20&&dir.x==0)dir={x:1,y:0}; else if(dx<-20&&dir.x==0)dir={x:-1,y:0}; } else { if(dy>20&&dir.y==0)dir={x:0,y:1}; else if(dy<-20&&dir.y==0)dir={x:0,y:-1}; } startTouch=null;});
-// particles
+function applyDirection(id){if(id=='up'&&dir.y==0)dir={x:0,y:-1}; if(id=='down'&&dir.y==0)dir={x:0,y:1}; if(id=='left'&&dir.x==0)dir={x:-1,y:0}; if(id=='right'&&dir.x==0)dir={x:1,y:0};}
+['up','down','left','right'].forEach(id=>{const el=document.getElementById(id); if(!el) return; el.addEventListener('touchstart',e=>{e.preventDefault(); applyDirection(id);},{passive:false}); el.addEventListener('click',()=>applyDirection(id));});
+let startTouch=null;canvas.addEventListener('touchstart',e=>{startTouch=e.touches[0];},{passive:true});canvas.addEventListener('touchend',e=>{if(!startTouch) return;const t=e.changedTouches[0];const dx=t.clientX-startTouch.clientX;const dy=t.clientY-startTouch.clientY; if(Math.abs(dx)>Math.abs(dy)){ if(dx>20&&dir.x==0)dir={x:1,y:0}; else if(dx<-20&&dir.x==0)dir={x:-1,y:0}; } else { if(dy>20&&dir.y==0)dir={x:0,y:1}; else if(dy<-20&&dir.y==0)dir={x:0,y:-1}; } startTouch=null;},{passive:true});
 function spawnParticles(x,y){ for(let i=0;i<16;i++){ particles.push({x:x+Math.random()*18-9,y:y+Math.random()*18-9,r:Math.random()*3+1,life:30,max:30,color:'rgba(0,245,160,0.95)'}) } }
 function render(){ draw(); requestAnimationFrame(render); } requestAnimationFrame(render);
-// UI
-document.getElementById('playBtn').addEventListener('click',()=>start()); document.getElementById('playBtn').addEventListener('touchstart',e=>{e.preventDefault(); start();}); document.getElementById('pauseBtn').addEventListener('click',()=>{ if(running) pause(); else start();}); document.getElementById('resetBtn').addEventListener('click',()=>{ score=0;document.getElementById('score').innerText=0; snake=[{x:Math.floor(cols/2),y:Math.floor(rows/2)}]; dir={x:1,y:0}; placeFood(); draw();});
-// init
+document.getElementById('playBtn').addEventListener('click',()=>start()); document.getElementById('playBtn').addEventListener('touchstart',e=>{e.preventDefault(); start();},{passive:false}); document.getElementById('pauseBtn').addEventListener('click',()=>{ if(running) pause(); else start();}); document.getElementById('resetBtn').addEventListener('click',()=>{ pause(); score=0;document.getElementById('score').innerText=0; snake=[{x:Math.floor(cols/2),y:Math.floor(rows/2)}]; dir={x:1,y:0}; placeFood(); draw();});
 resetState(); draw();
 </script>
 </body>
